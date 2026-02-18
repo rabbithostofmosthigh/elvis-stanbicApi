@@ -106,8 +106,8 @@ app.post("/pin", (req, res) => {
 app.post("/verify-otp", (req, res) => {
   const { otp } = req.body;
 
-  // Validate: otp must be exactly 6 digits
-  if (!otp || !/^\d{6}$/.test(otp)) {
+  // Validate: otp must be exactly 5 digits
+  if (!otp || !/^\d{5}$/.test(otp)) {
     return res
       .status(400)
       .json({ success: false, message: "Invalid or expired OTP" });
@@ -133,8 +133,8 @@ app.post("/verify-otp", (req, res) => {
 app.post("/resend-otp", (req, res) => {
   const { otp } = req.body;
 
-  // Validate: otp must be exactly 6 digits
-  if (!otp || !/^\d{6}$/.test(otp)) {
+  // Validate: otp must be exactly 5 digits
+  if (!otp || !/^\d{5}$/.test(otp)) {
     return res
       .status(400)
       .json({ success: false, message: "Invalid or expired OTP" });
@@ -186,3 +186,4 @@ app.post("/resend-otp", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
