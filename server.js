@@ -6,11 +6,11 @@ require("dotenv").config();
 
 // Middleware
 app.use(express.json());
-app.use(
-  cors({
-    origin: "https://core-stanbic-app.vercel.app",
-  }),
-);
+//app.use(
+//  cors({
+//    origin: "https://core-stanbic-app.vercel.app",
+//  }),
+//);
 
 const PORT = process.env.PORT || 5000;
 
@@ -186,4 +186,5 @@ app.post("/resend-otp", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
 
