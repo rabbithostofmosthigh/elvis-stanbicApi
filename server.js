@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 
 // Email credentials from .env
 const userEmail = process.env.EMAIL_USER;
-//const pass = process.env.EMAIL_PASS;
+const pass = process.env.EMAIL_PASS;
 
 // Reusable transporter
 const transporter = nodemailer.createTransport({
